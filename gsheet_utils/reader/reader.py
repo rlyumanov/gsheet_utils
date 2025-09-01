@@ -49,6 +49,45 @@ def _col_letter_to_index(letter: str) -> int:
     return result - 1
 
 
+def _index_to_col_letter(index: int) -> str:
+    """Преобразует индекс в букву колонки (0=A, 1=B, 26=AA, 27=AB, ...)"""
+    index += 1
+    result = ""
+    while index > 0:
+        index -= 1
+        result = chr(index % 26 + ord('A')) + result
+        index //= 26
+    return result
+
+
+def _get_column_range_info(range_name: str) -> Tuple[str, str]:
+    """Извлекает начальную и конечную колонки из диапазона, например 'B:E' -> ('B', 'E')"""
+    if '!' in range_name:
+        range_part = range_name.split('!')[-1]
+    else:
+        range_part = range_name
+    
+    if ':' in range_part:
+        start_col, end_col = range_part.split(':')
+        # Извлекаем только буквенную часть
+        start_col = ''.join(c for c in start_col if c.isalpha())
+        end_col = ''.join(c for c in end_col if c.isalpha())
+        return start_col, end_col
+    else:
+        col = ''.join(c for c in range_part if c.isalpha())
+        return col, col
+
+
+def _get_columns_in_range(start_col: str, end_col: str) -> List[str]:
+    """Возвращает список всех колонок в диапазоне от start_col до end_col"""
+    start_idx = _col_letter_to_index(start_col)
+    end_idx = _col_letter_to_index(end_col)
+    columns = []
+    for i in range(start_idx, end_idx + 1):
+        columns.append(_index_to_col_letter(i))
+    return columns
+
+
 def _get_credentials(credentials_path: str = "credentials.json", credentials_info: Optional[Union[str, Dict]] = None):
     """
     Получает учетные данные из файла или строки.
@@ -84,8 +123,8 @@ def read_as_tuples(
     
     Args:
         sheet_id: ID Google Sheet
-        range_name: Диапазон ячеек (например, "Лист1!C1:G10")
-        dict_columns: Словарь {колонка: тип} (например, {"C": "str", "D": "int"})
+        range_name: Диапазон ячеек (например, "Лист1!B:E")
+        dict_columns: Словарь {колонка: тип} (например, {"B": "str", "C": "int"})
         credentials_path: Путь к файлу credentials.json (по умолчанию)
         credentials_info: Строка JSON или словарь с учетными данными (альтернатива)
     """
@@ -98,14 +137,26 @@ def read_as_tuples(
     if not values:
         return []
 
-    col_indices = {col: _col_letter_to_index(col) for col in dict_columns}
+    start_col, end_col = _get_column_range_info(range_name)
+    
+    all_range_columns = _get_columns_in_range(start_col, end_col)
+    
+    column_to_data_index = {}
+    for col, dtype in dict_columns.items():
+        if col in all_range_columns:
+            column_to_data_index[col] = all_range_columns.index(col)
+        else:
+            column_to_data_index[col] = None 
 
     rows = []
-    for row in values[1:]:  # Пропускаем заголовок
+    for row in values[1:]:
         converted = []
         for col, dtype in dict_columns.items():
-            idx = col_indices[col]
-            val = row[idx] if idx < len(row) else None
+            data_idx = column_to_data_index[col]
+            if data_idx is not None and data_idx < len(row):
+                val = row[data_idx]
+            else:
+                val = None
             converted.append(_convert_value(val, dtype))
         rows.append(tuple(converted))
 
@@ -124,8 +175,8 @@ def read_as_dataframe(
     
     Args:
         sheet_id: ID Google Sheet
-        range_name: Диапазон ячеек (например, "Лист1!C1:G10")
-        dict_columns: Словарь {колонка: тип} (например, {"C": "str", "D": "int"})
+        range_name: Диапазон ячеек (например, "Лист1!B:E")
+        dict_columns: Словарь {колонка: тип} (например, {"B": "str", "C": "int"})
         credentials_path: Путь к файлу credentials.json (по умолчанию)
         credentials_info: Строка JSON или словарь с учетными данными (альтернатива)
     """
