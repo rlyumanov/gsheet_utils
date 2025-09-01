@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="gsheet_utils",
-    version="0.1.2",
+    version="0.1.3",
     author="r.lyumanov",
     author_email="rlyumanov@gmail.com",
     description="",

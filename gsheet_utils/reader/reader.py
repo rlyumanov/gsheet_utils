@@ -41,8 +41,12 @@ def _convert_value(value: str, dtype: str):
 
 
 def _col_letter_to_index(letter: str) -> int:
-    """A -> 0, B -> 1, ..."""
-    return ord(letter.upper()) - ord("A")
+    """Преобразует букву колонки в индекс (A=0, B=1, AA=26, AB=27, ...)"""
+    letter = letter.upper()
+    result = 0
+    for char in letter:
+        result = result * 26 + (ord(char) - ord('A') + 1)
+    return result - 1
 
 
 def _get_credentials(credentials_path: str = "credentials.json", credentials_info: Optional[Union[str, Dict]] = None):
@@ -80,8 +84,8 @@ def read_as_tuples(
     
     Args:
         sheet_id: ID Google Sheet
-        range_name: Диапазон ячеек (например, "Лист1!A1:E10")
-        dict_columns: Словарь {колонка: тип} (например, {"A": "str", "B": "int"})
+        range_name: Диапазон ячеек (например, "Лист1!C1:G10")
+        dict_columns: Словарь {колонка: тип} (например, {"C": "str", "D": "int"})
         credentials_path: Путь к файлу credentials.json (по умолчанию)
         credentials_info: Строка JSON или словарь с учетными данными (альтернатива)
     """
@@ -97,7 +101,7 @@ def read_as_tuples(
     col_indices = {col: _col_letter_to_index(col) for col in dict_columns}
 
     rows = []
-    for row in values[1:]:
+    for row in values[1:]:  # Пропускаем заголовок
         converted = []
         for col, dtype in dict_columns.items():
             idx = col_indices[col]
@@ -120,8 +124,8 @@ def read_as_dataframe(
     
     Args:
         sheet_id: ID Google Sheet
-        range_name: Диапазон ячеек (например, "Sheet1!A1:E10")
-        dict_columns: Словарь {колонка: тип} (например, {"A": "str", "B": "int"})
+        range_name: Диапазон ячеек (например, "Лист1!C1:G10")
+        dict_columns: Словарь {колонка: тип} (например, {"C": "str", "D": "int"})
         credentials_path: Путь к файлу credentials.json (по умолчанию)
         credentials_info: Строка JSON или словарь с учетными данными (альтернатива)
     """
